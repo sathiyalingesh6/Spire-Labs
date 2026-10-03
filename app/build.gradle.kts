@@ -19,6 +19,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val baseUrl = project.findProperty("BASE_URL") as? String ?: "\"https://dummyjson.com/\""
+        buildConfigField("String", "BASE_URL", baseUrl)
     }
 
     buildTypes {
@@ -34,6 +37,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
