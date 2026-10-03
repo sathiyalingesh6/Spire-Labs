@@ -12,6 +12,7 @@ sealed interface ProductDetailIntent : UiIntent {
     data object NavigateToCart : ProductDetailIntent
 }
 
+@androidx.compose.runtime.Immutable
 data class ProductDetailState(
     val isLoading: Boolean = false,
     val product: Product? = null,

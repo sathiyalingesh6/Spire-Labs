@@ -1,5 +1,8 @@
 package com.example.spire_labs.domain.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class Product(
     val id: Int,
     val title: String,

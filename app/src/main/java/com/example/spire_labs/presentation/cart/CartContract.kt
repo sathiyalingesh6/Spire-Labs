@@ -14,6 +14,7 @@ sealed interface CartIntent : UiIntent {
     data object NavigateBack : CartIntent
 }
 
+@androidx.compose.runtime.Immutable
 data class CartState(
     val isLoading: Boolean = false,
     val items: List<CartItem> = emptyList(),

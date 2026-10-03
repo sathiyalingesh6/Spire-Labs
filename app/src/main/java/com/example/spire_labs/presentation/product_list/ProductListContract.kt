@@ -13,6 +13,7 @@ sealed interface ProductListIntent : UiIntent {
     data object OnCartClicked : ProductListIntent
 }
 
+@androidx.compose.runtime.Immutable
 data class ProductListState(
     val isLoading: Boolean = false,
     val products: List<Product> = emptyList(),
