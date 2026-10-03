@@ -19,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +31,10 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.spire_labs.domain.model.Product
 
+private val CardShape = RoundedCornerShape(12.dp)
+private val ImageTopShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+private val StarColor = Color(0xFFFFB800)
+
 @Composable
 fun ProductCard(
     product: Product,
@@ -39,8 +44,8 @@ fun ProductCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
+            .clickable(onClick = onClick),
+        shape = CardShape,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
@@ -53,7 +58,7 @@ fun ProductCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(160.dp)
-                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
+                    .clip(ImageTopShape),
                 contentScale = ContentScale.Crop
             )
             Column(
@@ -84,7 +89,7 @@ fun ProductCard(
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = "Rating",
-                            tint = Color(0xFFFFB800),
+                            tint = StarColor,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))

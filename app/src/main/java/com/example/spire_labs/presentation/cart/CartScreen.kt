@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -184,7 +185,8 @@ fun CartScreen(
                     ) {
                         items(
                             items = state.items,
-                            key = { it.id }
+                            key = { it.id },
+                            contentType = { "cart_item" }
                         ) { cartItem ->
                             CartItemCard(
                                 cartItem = cartItem,

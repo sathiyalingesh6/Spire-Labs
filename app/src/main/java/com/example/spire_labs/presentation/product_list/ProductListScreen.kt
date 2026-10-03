@@ -156,7 +156,8 @@ fun ProductListScreen(
                         ) {
                             items(
                                 items = state.products,
-                                key = { it.id }
+                                key = { it.id },
+                                contentType = { "product" }
                             ) { product ->
                                 ProductCard(
                                     product = product,
