@@ -1,6 +1,7 @@
 package com.example.spire_labs.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -40,7 +41,7 @@ fun AppNavGraph(
         ) {
             ProductDetailScreen(
                 onNavigateBack = {
-                    navController.popBackStack()
+                    navController.safePopBackStack()
                 },
                 onNavigateToCart = {
                     navController.navigate(Screen.Cart.route)
@@ -51,9 +52,20 @@ fun AppNavGraph(
         composable(route = Screen.Cart.route) {
             CartScreen(
                 onNavigateBack = {
-                    navController.popBackStack()
+                    navController.safePopBackStack()
                 }
             )
         }
+    }
+}
+
+/**
+ * Safely navigates back only if there is a valid previous back stack entry
+ * and the current entry is in at least the RESUMED state, preventing duplicate pops / null pointer crashes.
+ */
+fun NavHostController.safePopBackStack() {
+    val isResumed = currentBackStackEntry?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) ?: true
+    if (previousBackStackEntry != null && isResumed) {
+        popBackStack()
     }
 }
