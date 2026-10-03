@@ -182,6 +182,16 @@ fun ProductDetailScreen(
                 }
                 state.product != null -> {
                     val product = state.product!!
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    val imageRequest = remember(product.thumbnail) {
+                        coil.request.ImageRequest.Builder(context)
+                            .data(product.thumbnail)
+                            .crossfade(true)
+                            .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                            .diskCachePolicy(coil.request.CachePolicy.ENABLED)
+                            .networkCachePolicy(coil.request.CachePolicy.ENABLED)
+                            .build()
+                    }
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -189,7 +199,7 @@ fun ProductDetailScreen(
                             .padding(16.dp)
                     ) {
                         AsyncImage(
-                            model = product.thumbnail,
+                            model = imageRequest,
                             contentDescription = product.title,
                             modifier = Modifier
                                 .fillMaxWidth()

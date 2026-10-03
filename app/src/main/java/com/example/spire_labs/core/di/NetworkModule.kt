@@ -1,15 +1,19 @@
 package com.example.spire_labs.core.di
 
+import android.content.Context
 import com.example.spire_labs.BuildConfig
 import com.example.spire_labs.data.remote.api.DummyJsonApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import okhttp3.Cache
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Qualifier
 import javax.inject.Singleton
@@ -32,6 +36,13 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideHttpCache(@ApplicationContext context: Context): Cache {
+        val cacheDir = File(context.cacheDir, "http_cache")
+        return Cache(cacheDir, 20L * 1024 * 1024) // 20 MB disk cache
+    }
+
+    @Provides
+    @Singleton
     fun provideLoggingInterceptor(): HttpLoggingInterceptor {
         return HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
@@ -39,15 +50,17 @@ object NetworkModule {
     }
 
     /**
-     * Standard OkHttpClient for public APIs with logging.
+     * Standard OkHttpClient with HTTP disk caching and logging.
      */
     @Provides
     @Singleton
     @DefaultOkHttp
     fun provideDefaultOkHttpClient(
-        loggingInterceptor: HttpLoggingInterceptor
+        loggingInterceptor: HttpLoggingInterceptor,
+        cache: Cache
     ): OkHttpClient {
         return OkHttpClient.Builder()
+            .cache(cache)
             .addInterceptor(loggingInterceptor)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
@@ -55,24 +68,25 @@ object NetworkModule {
     }
 
     /**
-     * Authenticated OkHttpClient (ready for Bearer token / auth interceptors).
+     * Authenticated OkHttpClient with HTTP disk caching.
      */
     @Provides
     @Singleton
     @AuthOkHttp
     fun provideAuthOkHttpClient(
-        loggingInterceptor: HttpLoggingInterceptor
+        loggingInterceptor: HttpLoggingInterceptor,
+        cache: Cache
     ): OkHttpClient {
         return OkHttpClient.Builder()
+            .cache(cache)
             .addInterceptor(loggingInterceptor)
-            // Add custom Token / Auth interceptor here when needed
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .build()
     }
 
     /**
-     * Retrofit instance specifically configured for DummyJSON API.
+     * Retrofit instance configured with DummyJSON base URL and OkHttp caching.
      */
     @Provides
     @Singleton
