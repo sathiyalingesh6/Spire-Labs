@@ -51,8 +51,7 @@ abstract class BaseViewModel<State : UiState, Intent : UiIntent, Effect : UiEffe
     }
 
     protected fun setState(reduce: State.() -> State) {
-        val newState = currentState.reduce()
-        _uiState.update { newState }
+        _uiState.update { it.reduce() }
     }
 
     protected fun setEffect(builder: () -> Effect) {
