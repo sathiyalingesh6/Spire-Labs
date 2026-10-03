@@ -113,7 +113,9 @@ fun ProductDetailScreen(
         bottomBar = {
             state.product?.let { product ->
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding(),
                     shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface
