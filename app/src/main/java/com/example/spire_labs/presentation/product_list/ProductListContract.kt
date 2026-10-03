@@ -1,5 +1,6 @@
 package com.example.spire_labs.presentation.product_list
 
+import androidx.compose.runtime.Immutable
 import com.example.spire_labs.core.base.UiEffect
 import com.example.spire_labs.core.base.UiIntent
 import com.example.spire_labs.core.base.UiState
@@ -7,13 +8,13 @@ import com.example.spire_labs.domain.model.Product
 
 sealed interface ProductListIntent : UiIntent {
     data object LoadProducts : ProductListIntent
-    data class SearchQueryChanged(val query: String) : ProductListIntent
+    data class Search(val query: String) : ProductListIntent
     data object Refresh : ProductListIntent
     data class OnProductClicked(val productId: Int) : ProductListIntent
     data object OnCartClicked : ProductListIntent
 }
 
-@androidx.compose.runtime.Immutable
+@Immutable
 data class ProductListState(
     val isLoading: Boolean = false,
     val products: List<Product> = emptyList(),

@@ -8,12 +8,10 @@ import com.example.spire_labs.domain.usecase.GetProductsUseCase
 import com.example.spire_labs.domain.usecase.SearchProductsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.time.Duration.Companion.milliseconds
 
 @HiltViewModel
 class ProductListViewModel @Inject constructor(
@@ -34,7 +32,7 @@ class ProductListViewModel @Inject constructor(
     override fun handleIntent(intent: ProductListIntent) {
         when (intent) {
             is ProductListIntent.LoadProducts -> fetchProducts()
-            is ProductListIntent.SearchQueryChanged -> handleSearch(intent.query)
+            is ProductListIntent.Search -> handleSearch(intent.query)
             is ProductListIntent.Refresh -> refresh()
             is ProductListIntent.OnProductClicked -> setEffect {
                 ProductListEffect.NavigateToDetail(intent.productId)
@@ -53,6 +51,7 @@ class ProductListViewModel @Inject constructor(
     }
 
     private fun fetchProducts() {
+        searchJob?.cancel()
         viewModelScope.launch {
             getProductsUseCase().collect { resource ->
                 when (resource) {
@@ -93,7 +92,6 @@ class ProductListViewModel @Inject constructor(
         }
 
         searchJob = viewModelScope.launch {
-            delay(300.milliseconds) // Debounce typing
             searchProductsUseCase(query).collect { resource ->
                 when (resource) {
                     is Resource.Loading -> {

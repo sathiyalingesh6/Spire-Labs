@@ -30,6 +30,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -38,6 +41,7 @@ import com.example.spire_labs.presentation.components.EmptyView
 import com.example.spire_labs.presentation.components.ErrorView
 import com.example.spire_labs.presentation.components.LoadingView
 import com.example.spire_labs.presentation.components.ProductCard
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +51,16 @@ fun ProductListScreen(
     onNavigateToCart: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var searchInput by rememberSaveable { mutableStateOf("") }
+
+    // 300ms Debounce in View: only dispatches to ViewModel when user pauses typing
+    LaunchedEffect(searchInput) {
+        if (searchInput.isEmpty() && state.searchQuery.isEmpty()) {
+            return@LaunchedEffect
+        }
+        delay(300)
+        viewModel.setIntent(ProductListIntent.Search(searchInput))
+    }
 
     LaunchedEffect(key1 = true) {
         viewModel.effect.collect { effect ->
@@ -93,10 +107,8 @@ fun ProductListScreen(
         ) {
             // Search Bar
             OutlinedTextField(
-                value = state.searchQuery,
-                onValueChange = { query ->
-                    viewModel.setIntent(ProductListIntent.SearchQueryChanged(query))
-                },
+                value = searchInput,
+                onValueChange = { searchInput = it },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -108,10 +120,8 @@ fun ProductListScreen(
                     )
                 },
                 trailingIcon = {
-                    if (state.searchQuery.isNotEmpty()) {
-                        IconButton(onClick = {
-                            viewModel.setIntent(ProductListIntent.SearchQueryChanged(""))
-                        }) {
+                    if (searchInput.isNotEmpty()) {
+                        IconButton(onClick = { searchInput = "" }) {
                             Icon(
                                 imageVector = Icons.Default.Clear,
                                 contentDescription = "Clear Search"
