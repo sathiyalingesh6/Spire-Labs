@@ -88,7 +88,7 @@ fun ProductListScreen(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
                 actions = {
-                    IconButton(onClick = { viewModel.setIntent(ProductListIntent.OnCartClicked) }) {
+                    IconButton(onClick = onNavigateToCart) {
                         BadgedBox(
                             badge = {
                                 if (state.cartItemCount > 0) {
@@ -179,9 +179,7 @@ fun ProductListScreen(
                             ) { product ->
                                 ProductCard(
                                     product = product,
-                                    onClick = {
-                                        viewModel.setIntent(ProductListIntent.OnProductClicked(product.id))
-                                    }
+                                    onClick = { onProductClick(product.id) }
                                 )
                             }
                         }

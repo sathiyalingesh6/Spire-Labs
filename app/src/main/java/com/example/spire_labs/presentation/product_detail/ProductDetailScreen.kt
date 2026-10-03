@@ -81,7 +81,7 @@ fun ProductDetailScreen(
             TopAppBar(
                 title = { Text(state.product?.title ?: "Product Details") },
                 navigationIcon = {
-                    IconButton(onClick = { viewModel.setIntent(ProductDetailIntent.NavigateBack) }) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
@@ -89,7 +89,7 @@ fun ProductDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.setIntent(ProductDetailIntent.NavigateToCart) }) {
+                    IconButton(onClick = onNavigateToCart) {
                         BadgedBox(
                             badge = {
                                 if (state.cartItemCount > 0) {

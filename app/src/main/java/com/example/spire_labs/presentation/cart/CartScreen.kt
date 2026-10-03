@@ -73,7 +73,7 @@ fun CartScreen(
             TopAppBar(
                 title = { Text("Shopping Cart (${state.totalItems})") },
                 navigationIcon = {
-                    IconButton(onClick = { viewModel.setIntent(CartIntent.NavigateBack) }) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
