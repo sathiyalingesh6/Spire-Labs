@@ -11,8 +11,9 @@ A modern Android application built using **Kotlin**, **Jetpack Compose**, **Clea
    - Displays product thumbnail, title, price, and customer rating.
    - Comprehensive UI state handling: **Loading**, **Error with Retry**, and **Empty results**.
 
-2. **Live Search**:
-   - Real-time product search with **300ms debounce** to avoid excessive network requests.
+2. **Live Search with View-Level Debounce**:
+   - Real-time product search with **300ms debounce implemented in the View** (`ProductListScreen`).
+   - Typing updates the input field instantly, and only dispatches the search intent to the ViewModel once the user pauses typing for 300ms.
    - Instant search clearing and empty state feedback.
 
 3. **Product Details**:
@@ -61,8 +62,13 @@ The application follows the principles of **Clean Architecture** combined with *
 - **One-Shot Side Effects**: Handled via `UiEffect` on a Kotlin coroutines `Channel` for events like Navigation and Snackbars, preventing duplicate triggers on configuration changes.
 
 ### Why `BaseViewModel`?
-- **Reduces Boilerplate**: Encapsulates common state management, intent subscription, and effect propagation across all ViewModels (`ProductListViewModel`, `ProductDetailViewModel`, `CartViewModel`).
+- **Reduces Boilerplate**: Encapsulates common state management, buffered intent subscription, and effect propagation across all ViewModels (`ProductListViewModel`, `ProductDetailViewModel`, `CartViewModel`).
 - **Thread-Safe Atomic State Updates**: Uses `MutableStateFlow.update { it.reduce() }` with atomic Compare-And-Set (CAS) semantics to prevent race conditions when multiple concurrent asynchronous tasks complete simultaneously.
+
+### Threading & `DispatchersModule`
+- **Main-Safe Architecture**: ViewModels launch on `viewModelScope` (which defaults to `Dispatchers.Main.immediate` for UI responsiveness).
+- **IO Thread Offloading**: Injected `@IoDispatcher` into `ProductRepositoryImpl` and `CartRepositoryImpl` ensures all network calls, DTO/Entity mapping, and Room disk database operations run on `Dispatchers.IO` using `.flowOn(ioDispatcher)` and `withContext(ioDispatcher)`.
+- **Testability**: Injecting dispatchers via `DispatchersModule` allows replacing `Dispatchers.IO` with `StandardTestDispatcher` in unit tests without blocking threads.
 
 ---
 
@@ -73,13 +79,26 @@ The application follows the principles of **Clean Architecture** combined with *
 | **Language** | Kotlin 2.2+ | Modern, concise language with Coroutines support |
 | **UI Framework** | Jetpack Compose (BOM 2026.02.01) | Declarative Android UI toolkit |
 | **Material Design** | Material 3 & Extended Icons | Modern Material 3 theming and iconography |
-| **Navigation** | Navigation Compose & Navigation 3 | Single-activity screen navigation and backstack |
+| **Navigation** | Navigation Compose & Navigation 3 | Single-activity screen navigation with safe backstack checks |
 | **DI** | Dagger Hilt (2.60.1) with KSP | Dependency injection for modularity and testability |
-| **Networking** | Retrofit 2 & OkHttp 3 (with Logging) | Type-safe REST client for DummyJSON API |
+| **Networking** | Retrofit 2 & OkHttp 3 (with Logging & Cache) | Type-safe REST client for DummyJSON API |
 | **JSON Parsing** | Gson Converter | JSON serialization / deserialization |
 | **Local Persistence** | Room Database (SQLite) | Offline-first reactive shopping cart storage |
-| **Image Loading** | Coil Compose | Asynchronous image loading with caching |
+| **Image Loading** | Coil Compose | Asynchronous image loading with two-tier RAM & disk caching |
 | **Concurrency** | Kotlin Coroutines & Flow | Asynchronous programming and reactive data streams |
+
+---
+
+## 🖼️ Image & Network Caching Strategy
+
+To ensure fluid 60/120fps scrolling and avoid redundant network image fetches:
+1. **Coil Image Caching (`SpireLabsApplication`)**:
+   - Configured custom `ImageLoaderFactory` with:
+     - **25% Available RAM Memory Cache** (`MemoryCache`) for immediate re-use on scroll.
+     - **50MB Dedicated Disk Cache** (`DiskCache`) in app cache directory.
+     - Hardware bitmaps (`allowHardware(true)`) and crossfade enabled.
+2. **OkHttp HTTP Response Cache (`NetworkModule`)**:
+   - 20MB disk cache on `OkHttpClient` to cache HTTP responses and static assets across app sessions.
 
 ---
 
@@ -101,7 +120,7 @@ The application follows the principles of **Clean Architecture** combined with *
 ### 2. Dependency Injection Qualifiers
 - **Retrofit Qualifier (`@DummyJsonRetrofit`)**: Distinguishes the Retrofit instance configured for DummyJSON, allowing other Retrofit instances (e.g. for authentication, microservices) to be added without collision.
 - **OkHttp Qualifiers (`@DefaultOkHttp` & `@AuthOkHttp`)**:
-  - `@DefaultOkHttp`: Public client with logging interceptor.
+  - `@DefaultOkHttp`: Public client with logging and HTTP cache.
   - `@AuthOkHttp`: Configured for authenticated requests (e.g., attaching Bearer token/refresh token interceptors).
 
 ---
