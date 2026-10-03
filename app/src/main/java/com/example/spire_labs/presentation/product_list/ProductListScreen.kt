@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -41,9 +42,13 @@ import com.example.spire_labs.presentation.components.EmptyView
 import com.example.spire_labs.presentation.components.ErrorView
 import com.example.spire_labs.presentation.components.LoadingView
 import com.example.spire_labs.presentation.components.ProductCard
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 @Composable
 fun ProductListScreen(
     viewModel: ProductListViewModel = hiltViewModel(),
@@ -53,13 +58,16 @@ fun ProductListScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var searchInput by rememberSaveable { mutableStateOf("") }
 
-    // 300ms Debounce in View: only dispatches to ViewModel when user pauses typing
-    LaunchedEffect(searchInput) {
-        if (searchInput.isEmpty() && state.searchQuery.isEmpty()) {
-            return@LaunchedEffect
-        }
-        delay(300)
-        viewModel.setIntent(ProductListIntent.Search(searchInput))
+    // Idiomatic reactive search debounce using snapshotFlow:
+    // Transforms Compose state into a Flow with automatic cancellation,
+    // distinct query checks, and precise 300ms debouncing.
+    LaunchedEffect(Unit) {
+        snapshotFlow { searchInput }
+            .distinctUntilChanged()
+            .debounce(300.milliseconds)
+            .collectLatest { query ->
+                viewModel.setIntent(ProductListIntent.Search(query))
+            }
     }
 
     LaunchedEffect(key1 = true) {
