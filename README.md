@@ -11,8 +11,9 @@ A modern Android application built using **Kotlin**, **Jetpack Compose**, **Clea
    - Displays product thumbnail, title, price, and customer rating.
    - Comprehensive UI state handling: **Loading**, **Error with Retry**, and **Empty results**.
 
-2. **Live Search**:
-   - Real-time product search with **300ms debounce** to avoid excessive network requests.
+2. **Live Search with `snapshotFlow` Debounce**:
+   - Real-time product search with **300ms debounce powered by Compose `snapshotFlow`**.
+   - Typing updates the input field instantly, and only dispatches the search intent to the ViewModel once the user pauses typing for 300ms.
    - Instant search clearing and empty state feedback.
 
 3. **Product Details**:
@@ -61,8 +62,31 @@ The application follows the principles of **Clean Architecture** combined with *
 - **One-Shot Side Effects**: Handled via `UiEffect` on a Kotlin coroutines `Channel` for events like Navigation and Snackbars, preventing duplicate triggers on configuration changes.
 
 ### Why `BaseViewModel`?
-- **Reduces Boilerplate**: Encapsulates common state management, intent subscription, and effect propagation across all ViewModels (`ProductListViewModel`, `ProductDetailViewModel`, `CartViewModel`).
+- **Reduces Boilerplate**: Encapsulates common state management, buffered intent subscription, and effect propagation across all ViewModels (`ProductListViewModel`, `ProductDetailViewModel`, `CartViewModel`).
 - **Thread-Safe Atomic State Updates**: Uses `MutableStateFlow.update { it.reduce() }` with atomic Compare-And-Set (CAS) semantics to prevent race conditions when multiple concurrent asynchronous tasks complete simultaneously.
+
+### Why `snapshotFlow` for Search Debouncing?
+In `ProductListScreen`, search debouncing is implemented using `snapshotFlow`:
+```kotlin
+LaunchedEffect(Unit) {
+    snapshotFlow { searchInput }
+        .distinctUntilChanged()
+        .debounce(300.milliseconds)
+        .collectLatest { query ->
+            viewModel.setIntent(ProductListIntent.Search(query))
+        }
+}
+```
+**Why this approach is superior**:
+1. **Idiomatic Reactive Bridge**: Concurrently converts Jetpack Compose state reads (`searchInput`) into a standard cold Kotlin `Flow`.
+2. **Standard Flow Operators**: Seamlessly utilizes `.debounce(300.milliseconds)` and `.distinctUntilChanged()` without custom timer loops or manual coroutine cancellation.
+3. **Zero Intent Churn**: Typing fast only updates local Compose UI state. The ViewModel MVI pipeline receives a single, stable `Search` intent after the user pauses typing.
+4. **Leak-Free Lifecycle**: Automatically cancels when the composable leaves the composition.
+
+### Threading & `DispatchersModule`
+- **Main-Safe Architecture**: ViewModels launch on `viewModelScope` (which defaults to `Dispatchers.Main.immediate` for UI responsiveness).
+- **IO Thread Offloading**: Injected `@IoDispatcher` into `ProductRepositoryImpl` and `CartRepositoryImpl` ensures all network calls, DTO/Entity mapping, and Room disk database operations run on `Dispatchers.IO` using `.flowOn(ioDispatcher)` and `withContext(ioDispatcher)`.
+- **Testability**: Injecting dispatchers via `DispatchersModule` allows replacing `Dispatchers.IO` with `StandardTestDispatcher` in unit tests without blocking threads.
 
 ---
 
@@ -73,13 +97,26 @@ The application follows the principles of **Clean Architecture** combined with *
 | **Language** | Kotlin 2.2+ | Modern, concise language with Coroutines support |
 | **UI Framework** | Jetpack Compose (BOM 2026.02.01) | Declarative Android UI toolkit |
 | **Material Design** | Material 3 & Extended Icons | Modern Material 3 theming and iconography |
-| **Navigation** | Navigation Compose & Navigation 3 | Single-activity screen navigation and backstack |
+| **Navigation** | Navigation Compose & Navigation 3 | Single-activity screen navigation with safe backstack checks |
 | **DI** | Dagger Hilt (2.60.1) with KSP | Dependency injection for modularity and testability |
-| **Networking** | Retrofit 2 & OkHttp 3 (with Logging) | Type-safe REST client for DummyJSON API |
+| **Networking** | Retrofit 2 & OkHttp 3 (with Logging & Cache) | Type-safe REST client for DummyJSON API |
 | **JSON Parsing** | Gson Converter | JSON serialization / deserialization |
 | **Local Persistence** | Room Database (SQLite) | Offline-first reactive shopping cart storage |
-| **Image Loading** | Coil Compose | Asynchronous image loading with caching |
+| **Image Loading** | Coil Compose | Asynchronous image loading with two-tier RAM & disk caching |
 | **Concurrency** | Kotlin Coroutines & Flow | Asynchronous programming and reactive data streams |
+
+---
+
+## 🖼️ Image & Network Caching Strategy
+
+To ensure fluid 60/120fps scrolling and avoid redundant network image fetches:
+1. **Coil Image Caching (`SpireLabsApplication`)**:
+   - Configured custom `ImageLoaderFactory` with:
+     - **25% Available RAM Memory Cache** (`MemoryCache`) for immediate re-use on scroll.
+     - **50MB Dedicated Disk Cache** (`DiskCache`) in app cache directory.
+     - Hardware bitmaps (`allowHardware(true)`) and crossfade enabled.
+2. **OkHttp HTTP Response Cache (`NetworkModule`)**:
+   - 20MB disk cache on `OkHttpClient` to cache HTTP responses and static assets across app sessions.
 
 ---
 
@@ -101,7 +138,7 @@ The application follows the principles of **Clean Architecture** combined with *
 ### 2. Dependency Injection Qualifiers
 - **Retrofit Qualifier (`@DummyJsonRetrofit`)**: Distinguishes the Retrofit instance configured for DummyJSON, allowing other Retrofit instances (e.g. for authentication, microservices) to be added without collision.
 - **OkHttp Qualifiers (`@DefaultOkHttp` & `@AuthOkHttp`)**:
-  - `@DefaultOkHttp`: Public client with logging interceptor.
+  - `@DefaultOkHttp`: Public client with logging and HTTP cache.
   - `@AuthOkHttp`: Configured for authenticated requests (e.g., attaching Bearer token/refresh token interceptors).
 
 ---
@@ -112,6 +149,29 @@ The shopping cart is designed with an **offline-first** strategy using Android R
 - **`CartEntity`**: Stores product ID, title, price, thumbnail, quantity, and available stock.
 - **`CartDao`**: Exposes `Flow<List<CartEntity>>`. Any local modification (increment, decrement, deletion, clear) instantly triggers a new emission to the ViewModel and Compose UI.
 - **Stock Limit Guarding**: Quantity increment operations are capped at the product's available `stock`.
+
+---
+
+## 🚀 Setup & Build Instructions
+
+### Prerequisites
+- **Android Studio**: Ladybug / Meerkat (or newer)
+- **JDK**: Version 17 or 21 (bundled JBR recommended)
+- **Android SDK**: Compile SDK 37 (Minimum SDK 24)
+
+### Steps to Run
+1. **Clone the Repository**:
+   ```bash
+   git clone <repository_url>
+   cd Spire-Labs
+   ```
+2. **Open Project in Android Studio**:
+   - Open Android Studio $\rightarrow$ **File** $\rightarrow$ **Open** $\rightarrow$ select the `Spire-Labs` folder.
+3. **Gradle Sync**:
+   - Let Android Studio download dependencies and sync Gradle files.
+4. **Run the App**:
+   - Select an emulator or connected physical Android device.
+   - Press **Run (Shift + F10)**.
 
 ---
 
