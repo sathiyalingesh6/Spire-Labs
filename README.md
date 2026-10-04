@@ -2,6 +2,8 @@
 
 A modern Android application built using **Kotlin**, **Jetpack Compose**, **Clean Architecture**, and **MVI (Model-View-Intent)** pattern. It allows users to browse and search products fetched from the DummyJSON REST API and provides an **offline-first, locally persisted shopping cart** that remains fully functional without an internet connection.
 
+🎥 **Video Demo / Walkthrough**: [Watch on Google Drive](https://drive.google.com/file/d/1w5falTeN8oU5gJcosW51EkUMgkPzX1j4/view?usp=drivesdk)
+
 ---
 
 ## 📱 Features
