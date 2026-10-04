@@ -54,12 +54,18 @@ The application follows the principles of **Clean Architecture** combined with *
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Why MVI (Model-View-Intent)?
-- **Unidirectional Data Flow (UDF)**: Data flows in only one direction. The View sends `UiIntent`s to the ViewModel, the ViewModel updates a single immutable `UiState`, and the View renders that state.
-- **MVI vs MVVM Difference**:
-  - In standard MVVM, the View directly calls multiple ViewModel methods and observes multiple separate `LiveData`/`StateFlow` streams. This often leads to fragmented state transitions and potential race conditions.
-  - In MVI, all user interactions are codified as explicit `UiIntent` events, and the screen is represented by a single immutable `UiState` snapshot. This makes the UI deterministic, easily testable, and reproducible.
-- **One-Shot Side Effects**: Handled via `UiEffect` on a Kotlin coroutines `Channel` for events like Navigation and Snackbars, preventing duplicate triggers on configuration changes.
+### Why MVI (Model-View-Intent) over MVVM?
+- **Concise & Deterministic Data Flow**: In traditional MVVM, a screen often binds to multiple scattered `StateFlow`/`LiveData` properties and invokes random ViewModel methods directly. This makes tracking the UI lifecycle, state mutations, and race conditions difficult.
+- **Tighter Control & Understandability**: MVI enforces a **single source of truth** (`UiState`) and explicit user actions (`UiIntent`). Every state transition is predictable, unidirectional, and easy to trace or debug.
+- **MVI vs MVVM Key Differences**:
+  - **Single State Snapshot**: The entire screen state is encapsulated in one immutable data class, eliminating inconsistent intermediate UI states (e.g., loading spinner showing alongside old error message).
+  - **Explicit Intent Stream**: UI actions flow as events through a buffered stream into `handleIntent(intent)`, making state transitions testable and reproducible.
+- **One-Shot Side Effects**: Handled cleanly via `UiEffect` on a Kotlin coroutines `Channel` for navigation and snackbars, ensuring guaranteed one-time delivery without re-triggering upon device rotation.
+
+### 🚀 Futuristic & Scalable Project Structure
+The architecture is structured with long-term scalability and modularity in mind:
+- **Plug-and-Play Feature Growth**: Each feature (e.g., `product_list`, `product_detail`, `cart`) is cleanly decoupled into presentation, domain use cases, and data sources. Adding a new feature (such as `checkout`, `wishlist`, or `user_profile`) requires minimal boilerplate without touching existing feature code.
+- **Domain Independence**: The `domain` layer has **zero dependencies** on Android frameworks, Retrofit, or Room. Business logic and validation rules are pure Kotlin, ensuring longevity even if UI toolkits or networking libraries change.
 
 ### Why `BaseViewModel`?
 - **Reduces Boilerplate**: Encapsulates common state management, buffered intent subscription, and effect propagation across all ViewModels (`ProductListViewModel`, `ProductDetailViewModel`, `CartViewModel`).
@@ -135,11 +141,15 @@ To ensure fluid 60/120fps scrolling and avoid redundant network image fetches:
 - **Rationale**: Allows seamless switching between environments (e.g., Development, Staging, Production) without changing application code.
 - **Design Decision & Safety Note**: For this assessment, the public API endpoint is stored in `gradle.properties` so the repository builds and runs immediately upon cloning. In enterprise production projects, sensitive keys and endpoints should be placed in `local.properties` (git-ignored) or injected via CI/CD environment secrets for security.
 
-### 2. Dependency Injection Qualifiers
-- **Retrofit Qualifier (`@DummyJsonRetrofit`)**: Distinguishes the Retrofit instance configured for DummyJSON, allowing other Retrofit instances (e.g. for authentication, microservices) to be added without collision.
-- **OkHttp Qualifiers (`@DefaultOkHttp` & `@AuthOkHttp`)**:
-  - `@DefaultOkHttp`: Public client with logging and HTTP cache.
-  - `@AuthOkHttp`: Configured for authenticated requests (e.g., attaching Bearer token/refresh token interceptors).
+### 2. Multi-Service Architecture with Retrofit Qualifiers
+- **Multiple Microservices / URL Support**: The DI layer is configured with custom qualifiers (`@DummyJsonRetrofit`, `@Named`, etc.) showcasing how the app can seamlessly connect to multiple backend microservices or distinct domain base URLs side-by-side without naming collisions or dependency conflicts.
+- **Targeted Client Configuration**: Each Retrofit instance can attach its own specialized OkHttpClient, timeouts, converter factories, and error handlers.
+
+### 3. Token-Based Authentication: Interceptors & OkHttp Authenticator
+- **Auth Header Interceptor (`@AuthOkHttp`)**: Automatically appends the Bearer token (`Authorization: Bearer <token>`) at the final network layer on outgoing requests without requiring UI or repository code to pass authentication headers manually.
+- **Automatic 401 Expiry Detection & Transparent Retry (`Authenticator`)**:
+  - Uses OkHttp's `Authenticator` interface to intercept HTTP `401 Unauthorized` responses.
+  - Automatically triggers a synchronous refresh token call, updates the local token storage, and replays the original failed request with the new token completely transparently to the user and caller repository.
 
 ---
 
@@ -181,3 +191,5 @@ The shopping cart is designed with an **offline-first** strategy using Android R
    - Currently, product browsing and search fetch directly from the network, while the cart is fully offline-persisted. A local Room cache for products could be added to support full catalog browsing offline.
 2. **Pagination (Paging 3)**:
    - The DummyJSON API supports `limit` and `skip` query parameters. Implementing the Android Paging 3 library would enable infinite scrolling for very large product catalogs.
+3. **Full Microservice & Real Auth Endpoints**:
+   - While multi-service Retrofit qualifiers and token interceptor/authenticator architectures are established in the DI structure, the assessment API (DummyJSON products) is public. Hooking up production auth endpoints with biometric/encrypted Keystore token persistence would be the next step for an enterprise release.
